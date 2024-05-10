@@ -1,11 +1,121 @@
 {% extends 'layout.html' %}
 
+{% block import %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.css"
+          integrity="sha512-/zs32ZEJh+/EO2N1b0PEdoA10JkdC3zJ8L5FTiQu82LR9S/rOQNfQN7U59U9BC12swNeRAz3HSzIL2vpp4fv3w=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"/>
+{% endblock %}
+
 {% block title %}Radio Telemetry{% endblock %}
+
+{% block style %}
+    .jumbotron {
+        background-color: #0073E6;
+        color: #fff;
+        padding: 40px 0;
+    }
+{% endblock %}
 
 {% block body %}
 
-    <div class="col-md-12">
-        <p>Hello</p>
+    <div class="jumbotron text-center">
+        <h1><b>Live Radio Telemetry</b></h1>
+        <h2>Click buttons to ensure proper function and then to begin collecting data</h2>
     </div>
+    <div class="row">
+        <div class="col-3 col-offset-3">
+            <form action="{{ url_for('index') }}" method="post">
+                <input type="hidden" value="device_tested" name="device_tested">
+                <button type="submit" class="btn btn-primary">Test Data Collection</button>
+            </form>
+        </div>
+        {% if device_tested == true %}
+            <div class="col-3 col-offset-3">
+                <form action="{{ url_for('index') }}" method="get">
+                    <button type="submit" class="btn btn-success">Begin Data Collection</button>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+    {% if take_data == true %}
+        <div class="row">
+            <div class="col-4">
+                <div class="card">
+                    <div class="card-body">
+                        <canvas id="canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4">
+
+            </div>
+            <div class="col-4">
+
+            </div>
+        </div>
+    {% endif %}
+    {% block script %}
+        $(document).ready(function () {
+            const config = {
+                type: 'line',
+                data: {
+                    labels: Array(30).fill("0000-00-00 00:00:00"),
+                    datasets: [{
+                        label: "Radio Telemetry",
+                        backgroundColor: 'rgb(255, 99, 132)',
+                        borderColor: 'rgb(255, 99, 132)',
+                        data: Array(30).fill(null),
+                        fill: false,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    title: {
+                        display: true,
+                        text: 'Creating Real-Time Charts with Flask'
+                    },
+                    tooltips: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    hover: {
+                        mode: 'nearest',
+                        intersect: true
+                    },
+                    scales: {
+                        xAxes: [{
+                            display: true,
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Time'
+                            }
+                        }],
+                        yAxes: [{
+                            display: true,
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Value'
+                            }
+                        }]
+                    }
+                }
+            };
+
+            const context = document.getElementById('canvas').getContext('2d');
+            const lineChart = new Chart(context, config);
+            const source = new EventSource("/chart-data");
+
+            source.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                if (config.data.labels.length === 30) {
+                    config.data.labels.shift();
+                    config.data.datasets[0].data.shift();
+                }
+                config.data.labels.push(data.time);
+                config.data.datasets[0].data.push(data.value);
+                lineChart.update();
+            }
+        });
+    {% endblock %}
 
 {% endblock %}
