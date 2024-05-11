@@ -99,14 +99,23 @@ def get_data():
 @app.route('/', methods=['GET', 'POST'])
 def index():
     """Renders the main page."""
-    '''
+
     if request.form.get('device_tested'):
+        # some logic for testing the device will go here
         flash('Device Successfully Tested')
         return render_template('index.html', device_tested=True)
     elif request.form.get('take_data'):
+        # send some command to the radio to get ready
         return render_template('index.html', take_data=True)
-    else:'''
-    return render_template('index.html')
+    elif request.form.get('stop'):
+        # send stop command to radio
+        # stop saving data and display amount of data points and stuff
+        return render_template('index.html', stop=True)
+    elif request.form.get('reset'):
+        # send stop command to radio
+        return render_template('index.html')
+    else:
+        return render_template('index.html')
 
 
 @app.route("/chart-data")

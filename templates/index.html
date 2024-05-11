@@ -1,17 +1,13 @@
 {% extends 'layout.html' %}
 
 {% block import %}
+    <!-- Imports for CSS, JQuery, and JavaScript for chart -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.css"
           integrity="sha512-/zs32ZEJh+/EO2N1b0PEdoA10JkdC3zJ8L5FTiQu82LR9S/rOQNfQN7U59U9BC12swNeRAz3HSzIL2vpp4fv3w=="
           crossorigin="anonymous" referrerpolicy="no-referrer"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
         integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <!--suppress JSUnresolvedLibraryURL -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.1/js/bootstrap.bundle.min.js"
-            integrity="sha512-mULnawDVcCnsk9a4aG1QLZZ6rcce/jSzEGqUkeOLy0b6q0+T6syHrxlsAGH7ZVoqC93Pd0lBqd6WguPWih7VHA=="
-            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <!--suppress JSUnresolvedLibraryURL -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"
             integrity="sha512-d9xgZrVZpmmQlfonhQUvTR7lMPtO7NkZMkA0ABN3PHCbKA5nqylQ/yWlFAyY6hYgdF1Qh6nYiuADWwKB4C2WSw=="
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -25,54 +21,79 @@
         color: #fff;
         padding: 40px 0;
     }
+    .form-group {display: ruby;}
+    .btn {margin-bottom: 30px;}
 {% endblock %}
 
 {% block body %}
-
     <div class="jumbotron text-center">
         <h1><b>Live Radio Telemetry</b></h1>
-        <h2>Click buttons to ensure proper function and then to begin collecting data</h2>
+        <h2>Click the test button to ensure proper function and then press the data button to begin collecting data</h2>
+        <h2>Press the reset button to restart application</h2>
     </div>
     <div class="row">
-        <div class="col-3 col-offset-3">
-            <form action="{{ url_for('index') }}" method="post">
-                <input type="hidden" value="device_tested" name="device_tested">
-                <button type="submit" class="btn btn-primary">Test Data Collection</button>
-            </form>
-        </div>
-        {% if device_tested == true %}
-            <div class="col-3 col-offset-3">
-                <form action="{{ url_for('index') }}" method="get">
+        {% if not device_tested and not take_data %}
+            <div class="col-md-3 col-md-offset-3">
+                <form action="{{ url_for('index') }}" method="post">
+                    <input type="hidden" value="device_tested" name="device_tested">
+                    <button type="submit" class="btn btn-primary">Test Data Collection</button>
+                </form>
+            </div>
+        {% endif %}
+        {% if device_tested and not take_data %}
+            <div class="col-md-3 col-md-offset-3">
+                <form action="{{ url_for('index') }}" method="post">
+                    <input type="hidden" value="take_data" name="take_data">
                     <button type="submit" class="btn btn-success">Begin Data Collection</button>
                 </form>
             </div>
         {% endif %}
+        {% if take_data %}
+            <div class="col-md-3 form-group">
+                <form action="{{ url_for('index') }}" method="post">
+                    <input type="hidden" value="pause" name="pause">
+                    <button type="submit" class="btn btn-primary">Pause Application</button>
+                </form>
+                <form action="{{ url_for('index') }}" method="post">
+                    <input type="hidden" value="stop" name="stop">
+                    <button type="submit" class="btn btn-warning">Stop Application</button>
+                </form>
+            </div>
+            <div class="col-md-2 col-md-offset-7">
+                <form action="{{ url_for('index') }}" method="post" id="reset" onsubmit="return confirmReset(event)">
+                    <input type="hidden" value="reset" name="reset">
+                    <button type="submit" class="btn btn-danger pull-right">Reset Application</button>
+                </form>
+            </div>
+        {% endif %}
     </div>
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <canvas id="canvas0"></canvas>
+    {% if take_data %}
+        <div class="row">
+        {% for i in range(3) %}
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <canvas id="canvas{{ i }}"></canvas>
+                    </div>
                 </div>
             </div>
+        {% endfor %}
         </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <canvas id="canvas1"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <canvas id="canvas2"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
+    {% endif %}
     <script>
+        // function for dialog box of reset button
+        function confirmReset(event) {
+            let result = confirm("Are you sure you want to reset the application? This will result in all data being lost.");
+            if (result !== true) {
+                event.preventDefault();
+            }
+            return result;
+        }
+
+        // code for getting data to all graphs
         $(document).ready(function () {
+            const titleList = ['Altitude', 'Temperature', 'Acceleration']
+            const axisLabelList = ['Altitude (m)', 'Temperature (°F)', 'Acceleration (m/s²)']
             let contextList = [];
             let lineChartList = [];
             let configList = [];
@@ -85,7 +106,6 @@
                     data: {
                         labels: Array(30).fill(""),
                         datasets: [{
-                            label: "Altitude",
                             backgroundColor: 'rgb(255, 99, 132)',
                             borderColor: 'rgb(255, 99, 132)',
                             data: Array(30).fill(null),
@@ -94,7 +114,8 @@
                     },
                     options: {
                         responsive: true,
-                        title: {display: true, text: 'Python Radio Telemetry'},
+                        title: {display: true, text: titleList[i]},
+                        legend: {display: false},
                         tooltips: {enabled: false},
                         hover: {mode: null},
                         scales: {
@@ -109,7 +130,7 @@
                                 display: true,
                                 scaleLabel: {
                                     display: true,
-                                    labelString: 'Altitude (m)'
+                                    labelString: axisLabelList[i]
                                 }
                             }]
                         }
@@ -142,7 +163,4 @@
             };
         });
     </script>
-
-
-
 {% endblock %}
