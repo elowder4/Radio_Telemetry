@@ -71,23 +71,27 @@ def close_db(error):
 
 def get_data():
     """Docstring Here"""
-
+    count = 0
     if request.headers.getlist("X-Forwarded-For"):
         client_ip = request.headers.getlist("X-Forwarded-For")[0]
     else:
         client_ip = request.remote_addr or ""
 
     try:
+        if count == 0:
+            t0 = time.perf_counter()
+            count += 1
+
         logger.info("Client %s connected", client_ip)
         while True:
             json_data = json.dumps(
                 {
-                    "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "value": random.random() * 100,
+                    "time": round(time.perf_counter() - t0, 1),
+                    "value": [random.random() * 100, random.random() * 100, random.random() * 100],
                 }
             )
             yield f"data:{json_data}\n\n"
-            time.sleep(1)
+            time.sleep(2)
     except GeneratorExit:
         logger.info("Client %s disconnected", client_ip)
 
@@ -95,19 +99,19 @@ def get_data():
 @app.route('/', methods=['GET', 'POST'])
 def index():
     """Renders the main page."""
-
+    '''
     if request.form.get('device_tested'):
         flash('Device Successfully Tested')
         return render_template('index.html', device_tested=True)
     elif request.form.get('take_data'):
         return render_template('index.html', take_data=True)
-    else:
-        return render_template('index.html')
+    else:'''
+    return render_template('index.html')
 
 
 @app.route("/chart-data")
 def chart_data() -> Response:
-    response = Response(stream_with_context(generate_random_data()), mimetype="text/event-stream")
+    response = Response(stream_with_context(get_data()), mimetype="text/event-stream")
     response.headers["Cache-Control"] = "no-cache"
     response.headers["X-Accel-Buffering"] = "no"
     return response

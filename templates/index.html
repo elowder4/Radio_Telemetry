@@ -4,6 +4,17 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.css"
           integrity="sha512-/zs32ZEJh+/EO2N1b0PEdoA10JkdC3zJ8L5FTiQu82LR9S/rOQNfQN7U59U9BC12swNeRAz3HSzIL2vpp4fv3w=="
           crossorigin="anonymous" referrerpolicy="no-referrer"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
+        integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!--suppress JSUnresolvedLibraryURL -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.1/js/bootstrap.bundle.min.js"
+            integrity="sha512-mULnawDVcCnsk9a4aG1QLZZ6rcce/jSzEGqUkeOLy0b6q0+T6syHrxlsAGH7ZVoqC93Pd0lBqd6WguPWih7VHA=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!--suppress JSUnresolvedLibraryURL -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"
+            integrity="sha512-d9xgZrVZpmmQlfonhQUvTR7lMPtO7NkZMkA0ABN3PHCbKA5nqylQ/yWlFAyY6hYgdF1Qh6nYiuADWwKB4C2WSw=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 {% endblock %}
 
 {% block title %}Radio Telemetry{% endblock %}
@@ -37,85 +48,101 @@
             </div>
         {% endif %}
     </div>
-    {% if take_data == true %}
-        <div class="row">
-            <div class="col-4">
-                <div class="card">
-                    <div class="card-body">
-                        <canvas id="canvas"></canvas>
-                    </div>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <canvas id="canvas0"></canvas>
                 </div>
             </div>
-            <div class="col-4">
-
-            </div>
-            <div class="col-4">
-
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <canvas id="canvas1"></canvas>
+                </div>
             </div>
         </div>
-    {% endif %}
-    {% block script %}
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <canvas id="canvas2"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
         $(document).ready(function () {
-            const config = {
-                type: 'line',
-                data: {
-                    labels: Array(30).fill("0000-00-00 00:00:00"),
-                    datasets: [{
-                        label: "Radio Telemetry",
-                        backgroundColor: 'rgb(255, 99, 132)',
-                        borderColor: 'rgb(255, 99, 132)',
-                        data: Array(30).fill(null),
-                        fill: false,
-                    }],
-                },
-                options: {
-                    responsive: true,
-                    title: {
-                        display: true,
-                        text: 'Creating Real-Time Charts with Flask'
-                    },
-                    tooltips: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    hover: {
-                        mode: 'nearest',
-                        intersect: true
-                    },
-                    scales: {
-                        xAxes: [{
-                            display: true,
-                            scaleLabel: {
-                                display: true,
-                                labelString: 'Time'
-                            }
-                        }],
-                        yAxes: [{
-                            display: true,
-                            scaleLabel: {
-                                display: true,
-                                labelString: 'Value'
-                            }
-                        }]
-                    }
-                }
-            };
+            let contextList = [];
+            let lineChartList = [];
+            let configList = [];
 
-            const context = document.getElementById('canvas').getContext('2d');
-            const lineChart = new Chart(context, config);
+            const elemList = document.querySelectorAll('canvas');
+
+            for (let i = 0; i < elemList.length; i++) {
+                let config = {
+                    type: 'line',
+                    data: {
+                        labels: Array(30).fill(""),
+                        datasets: [{
+                            label: "Altitude",
+                            backgroundColor: 'rgb(255, 99, 132)',
+                            borderColor: 'rgb(255, 99, 132)',
+                            data: Array(30).fill(null),
+                            fill: false,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        title: {display: true, text: 'Python Radio Telemetry'},
+                        tooltips: {enabled: false},
+                        hover: {mode: null},
+                        scales: {
+                            xAxes: [{
+                                display: true,
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Time (s)'
+                                }
+                            }],
+                            yAxes: [{
+                                display: true,
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Altitude (m)'
+                                }
+                            }]
+                        }
+                    }
+                };
+                configList.push(config);
+            }
+
+            elemList.forEach((elem, index) => {
+                let context = elem.getContext('2d');
+                contextList.push(context);
+                lineChartList.push(new Chart(context, configList[index]));
+            });
+
             const source = new EventSource("/chart-data");
 
             source.onmessage = function (event) {
                 const data = JSON.parse(event.data);
-                if (config.data.labels.length === 30) {
-                    config.data.labels.shift();
-                    config.data.datasets[0].data.shift();
+
+                for (let i = 0; i < elemList.length; i++) {
+                    if (configList[i].data.labels.length === 30) {
+                    configList[i].data.labels.shift();
+                    configList[i].data.datasets[0].data.shift();
+                    }
+
+                    configList[i].data.labels.push(data.time);
+                    configList[i].data.datasets[0].data.push(data.value[i]);
+                    lineChartList[i].update();
                 }
-                config.data.labels.push(data.time);
-                config.data.datasets[0].data.push(data.value);
-                lineChart.update();
-            }
+            };
         });
-    {% endblock %}
+    </script>
+
+
 
 {% endblock %}
