@@ -3,8 +3,7 @@
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" charset="utf-8">
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
-        <link rel="stylesheet" href="static/style.css" type="text/css">
-        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+        {% block import %}{% endblock %}
         <title>{% block title %}{% endblock %}</title>
         <style>
             footer {
@@ -20,21 +19,32 @@
 
             body {overflow-x: hidden;}
 
+            #flashed-messages {margin-top: 20px;}
+
             {% block style %}{% endblock %}
 
         </style>
     </head>
     <body>
-        <div class="container-fluid">
+        <div class="container-fluid" id="body-content">
+        <div class="row" id="flashed-messages">
+            <div class="col-md-12">
+                {% for message in get_flashed_messages() %}
+                    <div class="alert alert-info">{{ message }}</div>
+                {% endfor %}
+            </div>
+        </div>
         {% block body %}{% endblock %}
         </div>
         <div class="row" id="footer">
             <div class="col-md-12">
                 <footer class="text-center">
-                    <p>2024 Ethan Lowder.</p>
+                    <p>2024 Ethan Lowder</p>
                     <p>Contact: elowder@iwu.edu</p>
                 </footer>
             </div>
         </div>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+        <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
     </body>
 </html>
