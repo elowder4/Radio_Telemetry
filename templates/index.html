@@ -32,8 +32,8 @@
         <h2>Press the reset button to restart application</h2>
     </div>
     <div class="row">
-        {% if not device_tested and not take_data %}
-            <div class="col-md-3 col-md-offset-3">
+        {% if not (device_tested or take_data) or (not device_tested and take_data) %}
+            <div class="col-md-3">
                 <form action="{{ url_for('index') }}" method="post">
                     <input type="hidden" value="device_tested" name="device_tested">
                     <button type="submit" class="btn btn-primary">Test Data Collection</button>
@@ -41,19 +41,16 @@
             </div>
         {% endif %}
         {% if device_tested and not take_data %}
-            <div class="col-md-3 col-md-offset-3">
+            <div class="col-md-3">
                 <form action="{{ url_for('index') }}" method="post">
                     <input type="hidden" value="take_data" name="take_data">
                     <button type="submit" class="btn btn-success">Begin Data Collection</button>
                 </form>
             </div>
         {% endif %}
-        {% if take_data %}
+        {% if take_data and device_tested %}
             <div class="col-md-3 form-group">
-                <form action="{{ url_for('index') }}" method="post">
-                    <input type="hidden" value="pause" name="pause">
-                    <button type="submit" class="btn btn-primary">Pause Application</button>
-                </form>
+                <button class="btn btn-primary" id="pause">Pause Application</button>
                 <form action="{{ url_for('index') }}" method="post">
                     <input type="hidden" value="stop" name="stop">
                     <button type="submit" class="btn btn-warning">Stop Application</button>
@@ -66,8 +63,15 @@
                 </form>
             </div>
         {% endif %}
+        {% if not device_tested and take_data %}
+            <div class="col-md-2 col-md-offset-7">
+                <form action="{{ url_for('download_data_csv') }}" method="get">
+                    <button type="submit" class="btn btn-primary pull-right">Download Data</button>
+                </form>
+            </div>
+        {% endif %}
     </div>
-    {% if take_data %}
+    {% if device_tested and take_data %}
         <div class="row">
         {% for i in range(3) %}
             <div class="col-md-4">
@@ -76,6 +80,15 @@
                         <canvas id="canvas{{ i }}"></canvas>
                     </div>
                 </div>
+            </div>
+        {% endfor %}
+        </div>
+    {% endif %}
+    {% if not device_tested and take_data %}
+        <div class="row>">
+        {% for i in range(3) %}
+            <div class="col-md-4 centered">
+                <img src="/plot-png/{{ i }}" alt="telemetry plot">
             </div>
         {% endfor %}
         </div>
@@ -145,20 +158,37 @@
                 lineChartList.push(new Chart(context, configList[index]));
             });
 
+            // change text of resume/pause button and start/stop data collection
+            const pauseForm = document.getElementById('pause');
+            let pause = false;
+
+            pauseForm.addEventListener('click', () => {
+                if (pauseForm.textContent === 'Pause Application') {
+                    pauseForm.textContent = 'Resume Application';
+                    pause = true;
+                }
+                else {
+                    pauseForm.textContent = 'Pause Application';
+                    pause = false;
+                }
+            })
+
             const source = new EventSource("/chart-data");
 
             source.onmessage = function (event) {
-                const data = JSON.parse(event.data);
+                if (pause === false) {
+                    const data = JSON.parse(event.data);
 
-                for (let i = 0; i < elemList.length; i++) {
-                    if (configList[i].data.labels.length === 30) {
-                    configList[i].data.labels.shift();
-                    configList[i].data.datasets[0].data.shift();
+                    for (let i = 0; i < elemList.length; i++) {
+                        if (configList[i].data.labels.length === 30) {
+                            configList[i].data.labels.shift();
+                            configList[i].data.datasets[0].data.shift();
+                        }
+
+                        configList[i].data.labels.push(data.time);
+                        configList[i].data.datasets[0].data.push(data.value[i]);
+                        lineChartList[i].update();
                     }
-
-                    configList[i].data.labels.push(data.time);
-                    configList[i].data.datasets[0].data.push(data.value[i]);
-                    lineChartList[i].update();
                 }
             };
         });
